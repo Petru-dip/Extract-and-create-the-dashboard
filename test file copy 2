@@ -1,0 +1,112 @@
+(() => {
+
+    // =========================
+    // 1. BAREM CU RĂSPUNSURI MULTIPLE
+    // =========================
+    const barem = {
+        1:["B"],2:["D"],3:["A"],4:["B"],5:["D"],6:["C"],7:["B"],8:["C"],9:["E"],10:["D"],
+        11:["D"],12:["B"],13:["A"],14:["E"],15:["A"],16:["D"],17:["C"],
+        18:["C","D","E"],
+        19:["B"],20:["B"],21:["B"],22:["C"],23:["B"],24:["B"],25:["D"],26:["D"],27:["B"],
+        28:["E"],29:["D"],30:["D"],31:["E"],32:["D"],33:["C"],34:["D"],35:["E"],36:["B"],
+        37:["D"],38:["D"],39:["C"],40:["D"]
+    };
+
+    // =========================
+    // 2. FUNCȚIE EXTRAGERE VALOARE DIN TABEL
+    // =========================
+    function getValueFromUserTable(label) {
+        label = label.toLowerCase();
+        const rows = [...document.querySelectorAll("table tr")];
+
+        for (const tr of rows) {
+            const cells = tr.querySelectorAll("td,th");
+            if (cells.length >= 2) {
+                const key = cells[0].innerText.trim().toLowerCase();
+                if (key.startsWith(label)) {
+                    return cells[1].innerText.trim();
+                }
+            }
+        }
+        return "";
+    }
+
+    const name      = getValueFromUserTable("name");
+    const email     = getValueFromUserTable("email");
+    const startDate = getValueFromUserTable("start date");
+
+    // =========================
+    // 3. EXTRAGE DOAR RĂSPUNSURILE REALE
+    // =========================
+    function getUserAnswersClean() {
+        const answers = [];
+        const tds = [...document.querySelectorAll("td")];
+
+        for (const td of tds) {
+            if (td.innerText.trim().startsWith("User answered:")) {
+                const p = td.querySelector("p.error");
+                if (p) {
+                    const raw = p.innerText.trim().toUpperCase();
+                    const letters = raw.match(/[A-Z]/g);
+                    answers.push(letters ? letters.join("") : "");
+                }
+            }
+        }
+        return answers;
+    }
+
+    const userAnswers = getUserAnswersClean();
+
+    if (userAnswers.length < 40) {
+        console.warn("Atenție: doar", userAnswers.length, "răspunsuri detectate.");
+    }
+
+    // =========================
+    // 4. CALCUL PUNCTAJE
+    // =========================
+    let csvLines = [];
+    let totalScore = 0;
+
+    // PRIMA LINIE CERUTĂ
+    csvLines.push(`Name:${name},Email:${email},StartDate:${startDate}`);
+
+    // HEADERS
+    csvLines.push("NR_INTREBARE,VARIANTA_USER,VARIANTA_BAREM,PUNCTAJ");
+
+    for (let i = 1; i <= 40; i++) {
+        const idx = i - 1;
+
+        const userRaw = userAnswers[idx] || "";
+        const userList = userRaw.split("").sort();
+
+        const correctList = barem[i] || [];
+        const correctSorted = correctList.map(x => x.toUpperCase()).sort();
+
+        const score = (JSON.stringify(userList) === JSON.stringify(correctSorted)) ? 1 : 0;
+
+        totalScore += score;
+
+        csvLines.push(
+            `${i},${userList.join("")},${correctSorted.join("")},${score}`
+        );
+    }
+
+    csvLines.push(`TOTAL,,,${totalScore}`);
+
+    // =========================
+    // 5. DESCĂRCARE CSV
+    // =========================
+    const csvContent = "\uFEFF" + csvLines.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(name || "quiz_user").replace(/[^a-z0-9_]+/gi, "_")}_quiz.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    console.log("CSV cu date + răspunsuri generat!");
+
+})();

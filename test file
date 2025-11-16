@@ -1,0 +1,156 @@
+
+    (() => {
+    // =========================
+    // 1. BAREM CU RĂSPUNSURI MULTIPLE (obligatorii)
+    // =========================
+    const barem = {
+        1: ["B"],
+        2: ["D"],
+        3: ["A"],
+        4: ["B"],
+        5: ["D"],
+        6: ["C"],
+        7: ["B"],
+        8: ["C"],
+        9: ["E"],
+        10: ["D"],
+        11: ["D"],
+        12: ["B"],
+        13: ["A"],
+        14: ["E"],
+        15: ["A"],
+        16: ["D"],
+        17: ["C"],
+        18: ["C", "D", "E"], // <<<< exemplu MULTIPLE CORESPUNZĂTOR
+        19: ["B"],
+        20: ["B"],
+        21: ["B"],
+        22: ["C"],
+        23: ["B"],
+        24: ["B"],
+        25: ["D"],
+        26: ["D"],
+        27: ["B"],
+        28: ["E"],
+        29: ["D"],
+        30: ["D"],
+        31: ["E"],
+        32: ["D"],
+        33: ["C"],
+        34: ["D"],
+        35: ["E"],
+        36: ["B"],
+        37: ["D"],
+        38: ["D"],
+        39: ["C"],
+        40: ["D"]
+       
+      
+    };
+
+    // =========================
+    // 2. FUNCȚIE UTILĂ
+    // =========================
+    function getValueFromUserTable(label) {
+        label = label.toLowerCase();
+        const rows = [...document.querySelectorAll("table tr")];
+
+        for (const tr of rows) {
+            const cells = tr.querySelectorAll("td,th");
+            if (cells.length >= 2) {
+                const key = cells[0].innerText.trim().toLowerCase();
+                if (key.startsWith(label)) {
+                    return cells[1].innerText.trim();
+                }
+            }
+        }
+        return "";
+    }
+
+    // =========================
+    // 3. DATE UTILIZATOR
+    // =========================
+    const name  = getValueFromUserTable("name");
+    const email = getValueFromUserTable("email");
+
+    // =========================
+    // 4. RĂSPUNSURI UTILIZATOR DIN p.error
+    // =========================
+    const userAnswers = [...document.querySelectorAll("p.error")].map(el =>
+        el.innerText.trim().toUpperCase().replace(/\s+/g, "")
+    );
+
+    if (userAnswers.length < 40) {
+        console.warn("Atenție: doar", userAnswers.length, "răspunsuri detectate în p.error");
+    }
+
+    // =========================
+    // 5. COMPARAȚIE RĂSPUNSURI
+    // =========================
+    const maxQuestions = 40;
+    const perQuestion = [];
+    let totalScore = 0;
+
+    for (let i = 1; i <= maxQuestions; i++) {
+        const idx = i - 1;
+        const userRaw = userAnswers[idx] || "";
+
+        // Împărțim răspunsul utilizatorului în litere separate: "CDE" → ["C", "D", "E"]
+        const userList = userRaw.split("").sort();
+
+        // Baremul pentru întrebarea i (deja listă)
+        const correctList = barem[i] || [];
+        const correctSorted = correctList.map(s => s.toUpperCase()).sort();
+
+        // Verificare MULTIPLE — toate și doar acelea
+        let score = 0;
+        if (JSON.stringify(userList) === JSON.stringify(correctSorted)) {
+            score = 1;
+        }
+
+        totalScore += score;
+
+        perQuestion.push({
+            nr: i,
+            user: userList.join(""),
+            barem: correctSorted.join(""),
+            score
+        });
+    }
+
+    // =========================
+    // 6. GENERARE CSV
+    // =========================
+    function esc(v) {
+        return `"${String(v).replace(/"/g, '""')}"`;
+    }
+
+    const header = [
+        "Name","Email","TotalScore",
+        ...Array.from({length:maxQuestions}, (_,i)=>[`Q${i+1}_User`,`Q${i+1}_Barem`,`Q${i+1}_Score`]).flat()
+    ];
+
+    const data = [
+        name, email, totalScore,
+        ...perQuestion.flatMap(q => [q.user, q.barem, q.score])
+    ];
+
+    const csv = "\uFEFF" +
+        header.map(esc).join(",") + "\n" +
+        data.map(esc).join(",");
+
+    // =========================
+    // 7. DESCĂRCARE CSV
+    // =========================
+    const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+
+    a.href = url;
+    a.download = `${(name || "quiz_user").replace(/[^a-z0-9_]+/gi, "_")}_quiz.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    console.log("CSV generat cu succes!");
+})();
